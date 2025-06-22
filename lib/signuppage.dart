@@ -25,10 +25,12 @@ class _SignUpPageState extends State<SignUpPage> {
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
 
-  // Define the theme color (yellow) from the reference design
+  // Define the theme color (green) from your design
   final Color themeColor = const Color(0xFF00C853);
+
   @override
-  void initState() {
+  void initState()
+  {
     super.initState();
     // Set system UI overlay style to match theme color
     SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle(
@@ -47,66 +49,262 @@ class _SignUpPageState extends State<SignUpPage> {
     super.dispose();
   }
 
-  Future<void> _signUp() async {
-    if (_formKey.currentState!.validate()) {
-      setState(() {
-        _isLoading = true;
-      });
+  //Name validatior
+  String? _validateName(String? value)
+  {
+    if (value == null || value.trim().isEmpty) {
+      return 'Please enter your full name';
+    }
+    if (value.trim().length < 2) {
+      return 'Name must be at least 2 characters long';
+    }
+    if (!RegExp(r'^[a-zA-Z\s]+$').hasMatch(value.trim())) {
+      return 'Name can only contain letters and spaces';
+    }
+    return null;
+  }
 
-      try {
-        final response = await http.post(
-          Uri.parse('http://192.168.1.7:4000/add_user'),
-          headers: {'Content-Type': 'application/json'},
-          body: jsonEncode({
-            'user_name': _nameController.text,
-            'email': _emailController.text,
-            'phone_number': _phoneController.text,
-            'password': _passwordController.text,
-          }),
+  //Email validator
+  String? _validateEmail(String? value) {
+    if (value == null || value.trim().isEmpty) {
+      return 'Please enter your email address';
+    }
+
+    final emailRegex = RegExp(
+        r'^[a-zA-Z0-9.!#$%&*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$'
+    );
+
+    if (!emailRegex.hasMatch(value.trim())) {
+      return 'Please enter a valid email address';
+    }
+
+    // Check for common email domain typos
+    final commonDomains = ['gmail.com', 'yahoo.com', 'outlook.com', 'hotmail.com'];
+    final domain = value.trim().split('@').last.toLowerCase();
+
+    if (domain.contains('gmial') || domain.contains('yahooo')) {
+      return 'Please check your email domain spelling';
+    }
+
+    return null;
+
+  }
+
+  //Phone number validator
+  String? _validatePhoneNumber(String? value)
+  {
+    if (value == null || value.trim().isEmpty) {
+      return 'Please enter your phone number';
+    }
+
+    // Remove all non-digit characters for validation
+    String cleanedPhone = value.replaceAll(RegExp(r'[^\d]'), '');
+
+    // Check if it's exactly 10 digits (Indian phone number format)
+    if (cleanedPhone.length != 10) {
+      return 'Phone number must be exactly 10 digits';
+    }
+
+    // Check for obviously invalid patterns
+    if (RegExp(r'^(\d)\1{9}$').hasMatch(cleanedPhone)) {
+      return 'Please enter a valid phone number';
+    }
+
+    return null;
+  }
+
+
+  //Password validator
+  String? _validatePassword(String? value) {
+    if (value == null || value.isEmpty) {
+      return 'Please enter a password';
+    }
+
+    if (value.length < 8) {
+      return 'Password must be at least 8 characters long';
+    }
+
+    if (value.length > 128) {
+      return 'Password must be less than 128 characters';
+    }
+
+    // // Check for at least one uppercase letter
+    // if (!RegExp(r'[A-Z]').hasMatch(value)) {
+    //   return 'Password must contain at least one uppercase letter';
+    // }
+
+    // // Check for at least one lowercase letter
+    // if (!RegExp(r'[a-z]').hasMatch(value)) {
+    //   return 'Password must contain at least one lowercase letter';
+    // }
+
+    // Check for at least one digit
+    if (!RegExp(r'[0-9]').hasMatch(value)) {
+      return 'Password must contain at least one number';
+    }
+
+    // // Check for at least one special character
+    // if (!RegExp(r'[!@#$%^&*(),.?":{}|<>]').hasMatch(value)) {
+    //   return 'Password must contain at least one special character';
+    // }
+
+    // Check for common weak passwords
+    final commonPasswords = [
+      'password', '12345678', 'qwerty123', 'abc123456', 'password123'
+    ];
+    if (commonPasswords.contains(value.toLowerCase())) {
+      return 'Please choose a stronger password';
+    }
+
+    return null;
+  }
+
+
+  String? _validateConfirmPassword(String? value) {
+    if (value == null || value.isEmpty) {
+      return 'Please confirm your password';
+    }
+    if (value != _passwordController.text) {
+      return 'Passwords do not match';
+    }
+
+    return null;
+  }
+
+
+
+  Future<void> _signUp() async
+    {
+
+    // Validate form before proceeding
+    if (!_formKey.currentState!.validate())
+    {
+      // Show a snackbar to indicate validation errors
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Please fix the errors above'),
+          backgroundColor: Colors.red,
+          duration: Duration(seconds: 2),
+        ),
+      );
+      return;
+    }
+
+
+
+    //Setstate
+    setState(() {
+      _isLoading = true;
+    });
+
+
+    //sending form
+    try {
+      // Clean phone number before sending
+      String cleanedPhone = _phoneController.text.replaceAll(RegExp(r'[^\d]'), '');
+
+      final response = await http.post(
+        Uri.parse('http://10.0.2.2:4000/add_user'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: jsonEncode({
+          'user_name': _nameController.text.trim(),
+          'email': _emailController.text.trim().toLowerCase(),
+          'phone_number': cleanedPhone,
+          'password': _passwordController.text,
+        }),
+      );
+
+      setState(() {
+        _isLoading = false;
+      });
+     //form sent
+
+
+      //Check response
+      if (response.statusCode == 200 || response.statusCode == 201)
+      {
+        final data = jsonDecode(response.body);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Account created successfully!'),
+            backgroundColor: Colors.green,
+            duration: Duration(seconds: 2),
+          ),
         );
 
-        setState(() {
-          _isLoading = false;
-        });
+        // Navigate to login page after a short delay
+        await Future.delayed(Duration(seconds: 1));
 
-        final data = jsonDecode(response.body);
-
-        if (response.statusCode == 200) {
-          // Success - navigate to login page
+        if (mounted)
+        {
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(builder: (context) => LoginPage()),
           );
-        } else {
-          // Show error message
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Registration failed: ${data['message']}'),
-              backgroundColor: Colors.red,
-            ),
-          );
         }
-      } catch (e) {
-        setState(() {
-          _isLoading = false;
-        });
+
+      }
+      else
+      {
+        // Handle different error status codes
+        final data = jsonDecode(response.body);
+        String errorMessage = 'Registration failed';
+
+        if (response.statusCode == 400) {
+          errorMessage = data['message'] ?? 'Invalid data provided';
+        } else if (response.statusCode == 409) {
+          errorMessage = 'Email or phone number already exists';
+        } else if (response.statusCode >= 500) {
+          errorMessage = 'Server error. Please try again later';
+        } else {
+          errorMessage = data['message'] ?? 'Registration failed';
+        }
 
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error: $e'),
+            content: Text(errorMessage),
             backgroundColor: Colors.red,
+            duration: Duration(seconds: 3),
           ),
         );
       }
+
+    }
+    catch (e)
+    {
+      setState(() {
+        _isLoading = false;
+      });
+
+      String errorMessage = 'Connection error. Please check your internet connection and try again.';
+
+      if (e.toString().contains('SocketException')) {
+        errorMessage = 'Unable to connect to server. Please check your internet connection.';
+      } else if (e.toString().contains('TimeoutException')) {
+        errorMessage = 'Request timed out. Please try again.';
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(errorMessage),
+          backgroundColor: Colors.red,
+          duration: Duration(seconds: 3),
+        ),
+      );
     }
   }
 
+//Initstate Ended --->build started
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: Column(
         children: [
-          // Yellow header with logo
+
+          // Green header with logo
           Container(
             width: double.infinity,
             padding: const EdgeInsets.only(top: 46, bottom: 20, left: 20, right: 20),
@@ -120,6 +318,7 @@ class _SignUpPageState extends State<SignUpPage> {
             ),
           ),
 
+
           // Main content
           Expanded(
             child: Container(
@@ -127,8 +326,8 @@ class _SignUpPageState extends State<SignUpPage> {
               child: SingleChildScrollView(
                 child: Padding(
                   padding: const EdgeInsets.all(20.0),
-                  child: Form(
-                    key: _formKey,
+                  child:Form(
+                    key:_formKey,
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -141,6 +340,7 @@ class _SignUpPageState extends State<SignUpPage> {
                             color: Colors.black,
                           ),
                         ),
+
                         Text(
                           'Create a free account',
                           style: GoogleFonts.poppins(
@@ -148,6 +348,7 @@ class _SignUpPageState extends State<SignUpPage> {
                             color: Colors.black54,
                           ),
                         ),
+
                         const SizedBox(height: 25),
 
                         // Full Name Field
@@ -159,11 +360,14 @@ class _SignUpPageState extends State<SignUpPage> {
                             fontSize: 14,
                           ),
                         ),
+
                         const SizedBox(height: 8),
+
                         TextFormField(
                           controller: _nameController,
+                          textCapitalization: TextCapitalization.words,
                           decoration: InputDecoration(
-                            hintText: 'Full Name',
+                            hintText: 'Enter your full name',
                             hintStyle: GoogleFonts.poppins(
                               color: Colors.black38,
                               fontSize: 14,
@@ -180,16 +384,21 @@ class _SignUpPageState extends State<SignUpPage> {
                               borderRadius: BorderRadius.circular(4),
                               borderSide: BorderSide(color: themeColor),
                             ),
+                            errorBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(4),
+                              borderSide: BorderSide(color: Colors.red),
+                            ),
+                            focusedErrorBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(4),
+                              borderSide: BorderSide(color: Colors.red),
+                            ),
                             contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
                           ),
-                          validator: (value) {
-                            if (value == null || value.isEmpty) {
-                              return 'Please enter your name';
-                            }
-                            return null;
-                          },
+                          validator: _validateName,
                         ),
+
                         const SizedBox(height: 16),
+
 
                         // Email Field
                         Text(
@@ -204,8 +413,9 @@ class _SignUpPageState extends State<SignUpPage> {
                         TextFormField(
                           controller: _emailController,
                           keyboardType: TextInputType.emailAddress,
+                          autocorrect: false,
                           decoration: InputDecoration(
-                            hintText: 'Email address',
+                            hintText: 'Enter your email address',
                             hintStyle: GoogleFonts.poppins(
                               color: Colors.black38,
                               fontSize: 14,
@@ -222,19 +432,20 @@ class _SignUpPageState extends State<SignUpPage> {
                               borderRadius: BorderRadius.circular(4),
                               borderSide: BorderSide(color: themeColor),
                             ),
+                            errorBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(4),
+                              borderSide: BorderSide(color: Colors.red),
+                            ),
+                            focusedErrorBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(4),
+                              borderSide: BorderSide(color: Colors.red),
+                            ),
                             contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
                           ),
-                          validator: (value) {
-                            if (value == null || value.isEmpty) {
-                              return 'Please enter your email';
-                            }
-                            if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {
-                              return 'Please enter a valid email';
-                            }
-                            return null;
-                          },
+                          validator: _validateEmail,
                         ),
                         const SizedBox(height: 16),
+
 
                         // Phone Number Field
                         Text(
@@ -245,14 +456,25 @@ class _SignUpPageState extends State<SignUpPage> {
                             fontSize: 14,
                           ),
                         ),
+
                         const SizedBox(height: 8),
+
                         TextFormField(
                           controller: _phoneController,
                           keyboardType: TextInputType.phone,
+                          inputFormatters: [
+                            FilteringTextInputFormatter.digitsOnly,
+                            LengthLimitingTextInputFormatter(10),
+                          ],
                           decoration: InputDecoration(
-                            hintText: 'Phone Number',
+                            hintText: 'Enter 10-digit mobile number',
                             hintStyle: GoogleFonts.poppins(
                               color: Colors.black38,
+                              fontSize: 14,
+                            ),
+                            prefixText: '+91 ',
+                            prefixStyle: GoogleFonts.poppins(
+                              color: Colors.black87,
                               fontSize: 14,
                             ),
                             border: OutlineInputBorder(
@@ -267,14 +489,17 @@ class _SignUpPageState extends State<SignUpPage> {
                               borderRadius: BorderRadius.circular(4),
                               borderSide: BorderSide(color: themeColor),
                             ),
+                            errorBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(4),
+                              borderSide: BorderSide(color: Colors.red),
+                            ),
+                            focusedErrorBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(4),
+                              borderSide: BorderSide(color: Colors.red),
+                            ),
                             contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
                           ),
-                          validator: (value) {
-                            if (value == null || value.isEmpty) {
-                              return 'Please enter your phone number';
-                            }
-                            return null;
-                          },
+                          validator: _validatePhoneNumber,
                         ),
                         const SizedBox(height: 16),
 
@@ -292,10 +517,15 @@ class _SignUpPageState extends State<SignUpPage> {
                           controller: _passwordController,
                           obscureText: _obscurePassword,
                           decoration: InputDecoration(
-                            hintText: 'Password',
+                            hintText: 'Create a strong password',
                             hintStyle: GoogleFonts.poppins(
                               color: Colors.black38,
                               fontSize: 14,
+                            ),
+                            helperText: 'Min 8 chars & 1 number',
+                            helperStyle: GoogleFonts.poppins(
+                              color: Colors.black54,
+                              fontSize: 12,
                             ),
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(4),
@@ -308,6 +538,14 @@ class _SignUpPageState extends State<SignUpPage> {
                             focusedBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(4),
                               borderSide: BorderSide(color: themeColor),
+                            ),
+                            errorBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(4),
+                              borderSide: BorderSide(color: Colors.red),
+                            ),
+                            focusedErrorBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(4),
+                              borderSide: BorderSide(color: Colors.red),
                             ),
                             contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
                             suffixIcon: IconButton(
@@ -322,14 +560,12 @@ class _SignUpPageState extends State<SignUpPage> {
                               },
                             ),
                           ),
-                          validator: (value) {
-                            if (value == null || value.isEmpty) {
-                              return 'Please enter a password';
+                          validator: _validatePassword,
+                          onChanged: (value) {
+                            // Trigger validation of confirm password field when password changes
+                            if (_confirmPasswordController.text.isNotEmpty) {
+                              _formKey.currentState?.validate();
                             }
-                            if (value.length < 6) {
-                              return 'Password must be at least 6 characters';
-                            }
-                            return null;
                           },
                         ),
                         const SizedBox(height: 16),
@@ -348,7 +584,7 @@ class _SignUpPageState extends State<SignUpPage> {
                           controller: _confirmPasswordController,
                           obscureText: _obscureConfirmPassword,
                           decoration: InputDecoration(
-                            hintText: 'Repeat password',
+                            hintText: 'Repeat your password',
                             hintStyle: GoogleFonts.poppins(
                               color: Colors.black38,
                               fontSize: 14,
@@ -365,6 +601,14 @@ class _SignUpPageState extends State<SignUpPage> {
                               borderRadius: BorderRadius.circular(4),
                               borderSide: BorderSide(color: themeColor),
                             ),
+                            errorBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(4),
+                              borderSide: BorderSide(color: Colors.red),
+                            ),
+                            focusedErrorBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(4),
+                              borderSide: BorderSide(color: Colors.red),
+                            ),
                             contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
                             suffixIcon: IconButton(
                               icon: Icon(
@@ -378,17 +622,10 @@ class _SignUpPageState extends State<SignUpPage> {
                               },
                             ),
                           ),
-                          validator: (value) {
-                            if (value == null || value.isEmpty) {
-                              return 'Please confirm your password';
-                            }
-                            if (value != _passwordController.text) {
-                              return 'Passwords do not match';
-                            }
-                            return null;
-                          },
+                          validator: _validateConfirmPassword,
                         ),
                         const SizedBox(height: 30),
+
 
                         // Sign Up Button
                         SizedBox(

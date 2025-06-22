@@ -2,6 +2,9 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:my_turf/main.dart';
 import 'package:my_turf/signuppage.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:my_turf/Authstorage.dart';
+
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -13,15 +16,30 @@ class SplashScreen extends StatefulWidget {
 class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _animation;
+  var loginData=null;
+  // final loginData = await AuthStorage.getLoginData();
+
+  Future<void> checkLogin() async {
+    loginData = await AuthStorage.getLoginData();
+  }
 
   @override
   void initState() {
     super.initState();
 
+    checkLogin();
+
     Timer(const Duration(seconds: 3), () {
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (context) => const SignUpPage()),
-      );
+      if (loginData['token'] != null){
+        Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (context) => const MainPage()),
+      );}
+      else
+        {
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(builder: (context) => const SignUpPage()),
+          );
+        }
     });
 
     _controller = AnimationController(
@@ -32,7 +50,11 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
     _animation = Tween<double>(begin: 0, end: 8).animate(
       CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
     );
+
+
   }
+
+
 
   @override
   void dispose() {
